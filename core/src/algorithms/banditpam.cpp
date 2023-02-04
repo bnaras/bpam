@@ -66,7 +66,7 @@ arma_rowvec BanditPAM::buildSigma(
     referencePoints = arma::randperm(N, batchSize);
   }
 
-  arma::fvec sample(batchSize);
+  arma_vec sample(batchSize);
   arma_rowvec updated_sigma(N);
   #pragma omp parallel for
   for (size_t i = 0; i < N; i++) {
@@ -251,7 +251,7 @@ arma_mat BanditPAM::swapSigma(
     referencePoints = arma::randperm(N, batchSize);
   }
 
-  arma::fvec sample(batchSize);
+  arma_vec sample(batchSize);
   // for each considered swap
   #pragma omp parallel for
   for (size_t i = 0; i < K * N; i++) {
@@ -283,7 +283,7 @@ arma_mat BanditPAM::swapSigma(
   return updated_sigma;
 }
 
-arma::fvec BanditPAM::swapTarget(
+arma_vec BanditPAM::swapTarget(
   const arma_mat& data,
   const arma::urowvec* medoidIndices,
   const arma::uvec* targets,
@@ -292,7 +292,7 @@ arma::fvec BanditPAM::swapTarget(
   const arma::urowvec* assignments,
   const size_t exact = 0) {
   size_t N = data.n_cols;
-  arma::fvec estimates(targets->n_rows, arma::fill::zeros);
+  arma_vec estimates(targets->n_rows, arma::fill::zeros);
 
   size_t tmpBatchSize = batchSize;
   if (exact > 0) {
@@ -399,7 +399,7 @@ void BanditPAM::swap(
       arma::uvec targets = arma::find(compute_exactly);
 
       if (targets.size() > 0) {
-          arma::fvec result = swapTarget(
+          arma_vec result = swapTarget(
             data,
             medoidIndices,
             &targets,
@@ -418,7 +418,7 @@ void BanditPAM::swap(
         break;
       }
       targets = arma::find(candidates);
-      arma::fvec result = swapTarget(
+      arma_vec result = swapTarget(
         data,
         medoidIndices,
         &targets,
@@ -431,10 +431,10 @@ void BanditPAM::swap(
         (result * batchSize)) /
         (batchSize + numSamples.elem(targets));
       numSamples.elem(targets) += batchSize;
-      arma::fvec adjust(targets.n_rows);
+      arma_vec adjust(targets.n_rows);
       adjust.fill(p);
       adjust = arma::log(adjust);
-      arma::fvec confBoundDelta = sigma.elem(targets) %
+      arma_vec confBoundDelta = sigma.elem(targets) %
                           arma::sqrt(adjust / numSamples.elem(targets));
 
       ucbs.elem(targets) = estimates.elem(targets) + confBoundDelta;

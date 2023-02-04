@@ -107,7 +107,7 @@ class BanditPAM : public km::KMedoids {
    * 
    * @returns Estimate of each arm's change in loss
    */
-  arma::fvec swapTarget(
+  arma_vec swapTarget(
     const arma_mat& data,
     const arma::urowvec* medoidIndices,
     const arma::uvec* targets,
