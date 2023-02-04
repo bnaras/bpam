@@ -1,8 +1,7 @@
 #ifndef HEADERS_ALGORITHMS_PAM_HPP_
 #define HEADERS_ALGORITHMS_PAM_HPP_
 
-#include <omp.h>
-#include <armadillo>
+#include <bpam_common.h>
 #include <vector>
 #include <fstream>
 #include <iostream>
@@ -22,7 +21,7 @@ class PAM : public km::KMedoids {
    * 
    * @param inputData Input data to cluster
    */
-  void fitPAM(const arma::fmat& inputData);
+  void fitPAM(const arma_mat& inputData);
 
   /**
   * @brief Performs the BUILD step of PAM.
@@ -36,7 +35,7 @@ class PAM : public km::KMedoids {
   * as medoids are identified
   */
   void buildPAM(
-    const arma::fmat& data,
+    const arma_mat& data,
     arma::urowvec* medoidIndices);
 
   /** 
@@ -53,7 +52,7 @@ class PAM : public km::KMedoids {
   * @param assignments Array of containing the medoid each point is closest to
   */
   void swapPAM(
-    const arma::fmat& data,
+    const arma_mat& data,
     arma::urowvec* medoidIndices,
     arma::urowvec* assignments);
 };

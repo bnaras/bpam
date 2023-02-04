@@ -1,8 +1,7 @@
 #ifndef HEADERS_ALGORITHMS_FASTPAM1_HPP_
 #define HEADERS_ALGORITHMS_FASTPAM1_HPP_
 
-#include <omp.h>
-#include <armadillo>
+#include <bpam_common.h>
 #include <vector>
 #include <fstream>
 #include <iostream>
@@ -21,7 +20,7 @@ class FastPAM1 : public km::KMedoids {
    *
    * @param inputData Input data to cluster
    */
-  void fitFastPAM1(const arma::fmat& inputData);
+  void fitFastPAM1(const arma_mat& inputData);
 
   /**
    * @brief Performs the BUILD step of FastPAM1.
@@ -35,7 +34,7 @@ class FastPAM1 : public km::KMedoids {
    * as medoids are identified
    */
   void buildFastPAM1(
-    const arma::fmat& data,
+    const arma_mat& data,
     arma::urowvec* medoidIndices);
 
   /**
@@ -52,7 +51,7 @@ class FastPAM1 : public km::KMedoids {
    * @param assignments Array of containing the medoid each point is closest to
    */
   void swapFastPAM1(
-    const arma::fmat& data,
+    const arma_mat& data,
     arma::urowvec* medoidIndices,
     arma::urowvec* assignments);
 };

@@ -1,8 +1,8 @@
 #ifndef HEADERS_ALGORITHMS_KMEDOIDS_ALGORITHM_HPP_
 #define HEADERS_ALGORITHMS_KMEDOIDS_ALGORITHM_HPP_
 
-#include <omp.h>
-#include <armadillo>
+#include <bpam_common.h>
+
 #include <vector>
 #include <fstream>
 #include <iostream>
@@ -42,7 +42,7 @@ class KMedoids {
    * 
    * @throws if the input data is empty.
    */
-  void fit(const arma::fmat& inputData, const std::string& loss);
+  void fit(const arma_mat& inputData, const std::string& loss);
 
   /**
    * @brief Returns the medoids at the end of the BUILD step.
@@ -188,13 +188,13 @@ class KMedoids {
    *
    * @throws If no clustering has been run yet
    */
-  float getAverageLoss() const;
+  bpam_float getAverageLoss() const;
 
   /// The cache will be of size cacheMultiplier*nlogn
   size_t cacheMultiplier = 1000;
 
   /// The cache which stores pairwise distance computations
-  float* cache;
+  bpam_float* cache;
 
   /// The permutation in which to sample the reference points
   arma::uvec permutation;
@@ -225,10 +225,10 @@ class KMedoids {
    * @param assignments Assignments of datapoints to their closest medoid
    */
   void calcBestDistancesSwap(
-    const arma::fmat& data,
+    const arma_mat& data,
     const arma::urowvec* medoidIndices,
-    arma::frowvec* bestDistances,
-    arma::frowvec* secondBestDistances,
+    arma_rowvec* bestDistances,
+    arma_rowvec* secondBestDistances,
     arma::urowvec* assignments,
     const bool swapPerformed = true);
 
@@ -241,8 +241,8 @@ class KMedoids {
    * @returns The average loss, i.e., the average distance from each point to its
    * nearest medoid
    */
-  float calcLoss(
-    const arma::fmat& data,
+  bpam_float calcLoss(
+    const arma_mat& data,
     const arma::urowvec* medoidIndices);
 
   /**
@@ -258,8 +258,8 @@ class KMedoids {
    * 
    * @returns The distance between points i and j
    */
-  float cachedLoss(
-    const arma::fmat& data,
+  bpam_float cachedLoss(
+    const arma_mat& data,
     const size_t i,
     const size_t j,
     const bool useCache = true);
@@ -277,8 +277,8 @@ class KMedoids {
    * 
    * @returns The Lp distance between points i and j
    */
-  float LP(
-    const arma::fmat& data,
+  bpam_float LP(
+    const arma_mat& data,
     const size_t i,
     const size_t j) const;
 
@@ -292,7 +292,7 @@ class KMedoids {
    * 
    * @returns The L-infinity distance between points i and j
    */
-  float LINF(const arma::fmat& data,
+  bpam_float LINF(const arma_mat& data,
     const size_t i,
     const size_t j) const;
 
@@ -306,7 +306,7 @@ class KMedoids {
    * 
    * @returns The cosine distance between points i and j
    */
-  float cos(const arma::fmat& data,
+  bpam_float cos(const arma_mat& data,
     const size_t i,
     const size_t j) const;
 
@@ -320,7 +320,7 @@ class KMedoids {
    * 
    * @returns The Manhattan distance between points i and j
    */
-  float manhattan(const arma::fmat& data,
+  bpam_float manhattan(const arma_mat& data,
     const size_t i,
     const size_t j) const;
 
@@ -344,7 +344,7 @@ class KMedoids {
   size_t maxIter;
 
   /// Data to be clustered
-  arma::fmat data;
+  arma_mat data;
 
   /// Cluster assignments of each point
   arma::urowvec labels;
@@ -356,8 +356,8 @@ class KMedoids {
   arma::urowvec medoidIndicesFinal;
 
   /// Function pointer to the loss function to use
-  float (KMedoids::*lossFn)(
-    const arma::fmat& data,
+  bpam_float (KMedoids::*lossFn)(
+    const arma_mat& data,
     const size_t i,
     const size_t j)
     const;
@@ -371,11 +371,11 @@ class KMedoids {
   /// Governs the error rate of each SWAP step in BanditPAM
   size_t swapConfidence;
 
-  /// Used for floatcomparisons, primarily number of "arms" remaining
-  const float precision = 0.001;
+  /// Used for bpam_floatcomparisons, primarily number of "arms" remaining
+  const bpam_float precision = 0.001;
 
   /// Contains the average loss at the last step of the algorithm
-  float averageLoss;
+  bpam_float averageLoss;
 
   /// Number of points to sample per reference batch
   size_t batchSize = 100;

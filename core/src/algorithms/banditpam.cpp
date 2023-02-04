@@ -7,18 +7,17 @@
 
 #include "banditpam.hpp"
 
-#include <armadillo>
 #include <unordered_map>
 #include <cmath>
 
 namespace km {
-void BanditPAM::fitBanditPAM(const arma::fmat& inputData) {
+void BanditPAM::fitBanditPAM(const arma_mat& inputData) {
   data = arma::trans(inputData);
 
   if (this->useCacheP) {
     size_t n = data.n_cols;
     size_t m = fmin(n, ceil(log10(data.n_cols) * cacheMultiplier));
-    cache = new float[n * m];
+    cache = new bpam_float[n * m];
 
     #pragma omp parallel for
     for (size_t idx = 0; idx < m*n; idx++) {
@@ -34,7 +33,7 @@ void BanditPAM::fitBanditPAM(const arma::fmat& inputData) {
     }
   }
 
-  arma::fmat medoidMatrix(data.n_rows, nMedoids);
+  arma_mat medoidMatrix(data.n_rows, nMedoids);
   arma::urowvec medoidIndices(nMedoids);
   BanditPAM::build(data, &medoidIndices, &medoidMatrix);
   steps = 0;
@@ -46,9 +45,9 @@ void BanditPAM::fitBanditPAM(const arma::fmat& inputData) {
   labels = assignments;
 }
 
-arma::frowvec BanditPAM::buildSigma(
-  const arma::fmat& data,
-  const arma::frowvec& bestDistances,
+arma_rowvec BanditPAM::buildSigma(
+  const arma_mat& data,
+  const arma_rowvec& bestDistances,
   const bool useAbsolute) {
   size_t N = data.n_cols;
   arma::uvec referencePoints;
@@ -68,11 +67,11 @@ arma::frowvec BanditPAM::buildSigma(
   }
 
   arma::fvec sample(batchSize);
-  arma::frowvec updated_sigma(N);
+  arma_rowvec updated_sigma(N);
   #pragma omp parallel for
   for (size_t i = 0; i < N; i++) {
     for (size_t j = 0; j < batchSize; j++) {
-      float cost = KMedoids::cachedLoss(data, i, referencePoints(j));
+      bpam_float cost = KMedoids::cachedLoss(data, i, referencePoints(j));
       if (useAbsolute) {
         sample(j) = cost;
       } else {
@@ -86,10 +85,10 @@ arma::frowvec BanditPAM::buildSigma(
   return updated_sigma;
 }
 
-arma::frowvec BanditPAM::buildTarget(
-  const arma::fmat& data,
+arma_rowvec BanditPAM::buildTarget(
+  const arma_mat& data,
   const arma::uvec* target,
-  const arma::frowvec* bestDistances,
+  const arma_rowvec* bestDistances,
   const bool useAbsolute,
   const size_t exact = 0) {
   size_t N = data.n_cols;
@@ -97,7 +96,7 @@ arma::frowvec BanditPAM::buildTarget(
   if (exact > 0) {
     tmpBatchSize = N;
   }
-  arma::frowvec estimates(target->n_rows, arma::fill::zeros);
+  arma_rowvec estimates(target->n_rows, arma::fill::zeros);
   arma::uvec referencePoints;
   // TODO(@motiwari): Make this wraparound properly
   // as last batch_size elements are dropped
@@ -116,9 +115,9 @@ arma::frowvec BanditPAM::buildTarget(
 
   #pragma omp parallel for
   for (size_t i = 0; i < target->n_rows; i++) {
-    float total = 0;
+    bpam_float total = 0;
     for (size_t j = 0; j < referencePoints.n_rows; j++) {
-      float cost =
+      bpam_float cost =
         KMedoids::cachedLoss(data, (*target)(i), referencePoints(j));
       if (useAbsolute) {
         total += cost;
@@ -134,23 +133,23 @@ arma::frowvec BanditPAM::buildTarget(
 }
 
 void BanditPAM::build(
-  const arma::fmat& data,
+  const arma_mat& data,
   arma::urowvec* medoidIndices,
-  arma::fmat* medoids) {
+  arma_mat* medoids) {
   size_t N = data.n_cols;
-  arma::frowvec N_mat(N);
+  arma_rowvec N_mat(N);
   N_mat.fill(N);
   size_t p = (buildConfidence * N);
   bool useAbsolute = true;
-  arma::frowvec estimates(N, arma::fill::zeros);
-  arma::frowvec bestDistances(N);
-  bestDistances.fill(std::numeric_limits<float>::infinity());
-  arma::frowvec sigma(N);
+  arma_rowvec estimates(N, arma::fill::zeros);
+  arma_rowvec bestDistances(N);
+  bestDistances.fill(std::numeric_limits<bpam_float>::infinity());
+  arma_rowvec sigma(N);
   arma::urowvec candidates(N, arma::fill::ones);
-  arma::frowvec lcbs(N);
-  arma::frowvec ucbs(N);
-  arma::frowvec numSamples(N, arma::fill::zeros);
-  arma::frowvec exactMask(N, arma::fill::zeros);
+  arma_rowvec lcbs(N);
+  arma_rowvec ucbs(N);
+  arma_rowvec numSamples(N, arma::fill::zeros);
+  arma_rowvec exactMask(N, arma::fill::zeros);
 
   // TODO(@motiwari): #pragma omp parallel for?
   for (size_t k = 0; k < nMedoids; k++) {
@@ -171,7 +170,7 @@ void BanditPAM::build(
         ((numSamples + batchSize) >= N_mat) != exactMask;
       if (arma::accu(compute_exactly) > 0) {
         arma::uvec targets = find(compute_exactly);
-        arma::frowvec result = buildTarget(
+        arma_rowvec result = buildTarget(
           data,
           &targets,
           &bestDistances,
@@ -188,7 +187,7 @@ void BanditPAM::build(
         break;
       }
       arma::uvec targets = arma::find(candidates);
-      arma::frowvec result = buildTarget(
+      arma_rowvec result = buildTarget(
         data,
         &targets,
         &bestDistances,
@@ -200,10 +199,10 @@ void BanditPAM::build(
         (result * batchSize)) /
         (batchSize + numSamples.cols(targets));
       numSamples.cols(targets) += batchSize;
-      arma::frowvec adjust(targets.n_rows);
+      arma_rowvec adjust(targets.n_rows);
       adjust.fill(p);
       adjust = arma::log(adjust);
-      arma::frowvec confBoundDelta =
+      arma_rowvec confBoundDelta =
         sigma.cols(targets) %
         arma::sqrt(adjust / numSamples.cols(targets));
       ucbs.cols(targets) = estimates.cols(targets) + confBoundDelta;
@@ -218,7 +217,7 @@ void BanditPAM::build(
     // don't need to do this on final iteration
     #pragma omp parallel for
     for (size_t i = 0; i < N; i++) {
-        float cost = KMedoids::cachedLoss(data, i, (*medoidIndices)(k));
+        bpam_float cost = KMedoids::cachedLoss(data, i, (*medoidIndices)(k));
         if (cost < bestDistances(i)) {
             bestDistances(i) = cost;
         }
@@ -228,14 +227,14 @@ void BanditPAM::build(
   }
 }
 
-arma::fmat BanditPAM::swapSigma(
-  const arma::fmat& data,
-  const arma::frowvec* bestDistances,
-  const arma::frowvec* secondBestDistances,
+arma_mat BanditPAM::swapSigma(
+  const arma_mat& data,
+  const arma_rowvec* bestDistances,
+  const arma_rowvec* secondBestDistances,
   const arma::urowvec* assignments) {
   size_t N = data.n_cols;
   size_t K = nMedoids;
-  arma::fmat updated_sigma(K, N, arma::fill::zeros);
+  arma_mat updated_sigma(K, N, arma::fill::zeros);
   arma::uvec referencePoints;
   // TODO(@motiwari): Make this wraparound properly
   // as last batch_size elements are dropped
@@ -262,7 +261,7 @@ arma::fmat BanditPAM::swapSigma(
 
     // calculate change in loss for some subset of the data
     for (size_t j = 0; j < batchSize; j++) {
-      float cost = KMedoids::cachedLoss(data, n, referencePoints(j));
+      bpam_float cost = KMedoids::cachedLoss(data, n, referencePoints(j));
 
       if (k == (*assignments)(referencePoints(j))) {
         if (cost < (*secondBestDistances)(referencePoints(j))) {
@@ -285,11 +284,11 @@ arma::fmat BanditPAM::swapSigma(
 }
 
 arma::fvec BanditPAM::swapTarget(
-  const arma::fmat& data,
+  const arma_mat& data,
   const arma::urowvec* medoidIndices,
   const arma::uvec* targets,
-  const arma::frowvec* bestDistances,
-  const arma::frowvec* secondBestDistances,
+  const arma_rowvec* bestDistances,
+  const arma_rowvec* secondBestDistances,
   const arma::urowvec* assignments,
   const size_t exact = 0) {
   size_t N = data.n_cols;
@@ -319,13 +318,13 @@ arma::fvec BanditPAM::swapTarget(
   // for each considered swap
   #pragma omp parallel for
   for (size_t i = 0; i < targets->n_rows; i++) {
-    float total = 0;
+    bpam_float total = 0;
     // extract data point of swap
     size_t n = (*targets)(i) / medoidIndices->n_cols;
     size_t k = (*targets)(i) % medoidIndices->n_cols;
     // calculate total loss for some subset of the data
     for (size_t j = 0; j < tmpBatchSize; j++) {
-      float cost = KMedoids::cachedLoss(data, n, referencePoints(j));
+      bpam_float cost = KMedoids::cachedLoss(data, n, referencePoints(j));
       if (k == (*assignments)(referencePoints(j))) {
         if (cost < (*secondBestDistances)(referencePoints(j))) {
           total += cost;
@@ -347,23 +346,23 @@ arma::fvec BanditPAM::swapTarget(
 }
 
 void BanditPAM::swap(
-  const arma::fmat& data,
+  const arma_mat& data,
   arma::urowvec* medoidIndices,
-  arma::fmat* medoids,
+  arma_mat* medoids,
   arma::urowvec* assignments) {
   size_t N = data.n_cols;
   size_t p = (N * nMedoids * swapConfidence);
 
-  arma::fmat sigma(nMedoids, N, arma::fill::zeros);
+  arma_mat sigma(nMedoids, N, arma::fill::zeros);
 
-  arma::frowvec bestDistances(N);
-  arma::frowvec secondBestDistances(N);
+  arma_rowvec bestDistances(N);
+  arma_rowvec secondBestDistances(N);
   bool swapPerformed = true;
   arma::umat candidates(nMedoids, N, arma::fill::ones);
   arma::umat exactMask(nMedoids, N, arma::fill::zeros);
-  arma::fmat estimates(nMedoids, N, arma::fill::zeros);
-  arma::fmat lcbs(nMedoids, N);
-  arma::fmat ucbs(nMedoids, N);
+  arma_mat estimates(nMedoids, N, arma::fill::zeros);
+  arma_mat lcbs(nMedoids, N);
+  arma_mat ucbs(nMedoids, N);
   arma::umat numSamples(nMedoids, N, arma::fill::zeros);
 
   // calculate quantities needed for swap, bestDistances and sigma
@@ -391,7 +390,7 @@ void BanditPAM::swap(
     estimates.fill(0);
     numSamples.fill(0);
 
-    // while there is at least one candidate (float comparison issues)
+    // while there is at least one candidate (bpam_float comparison issues)
     while (arma::accu(candidates) > 0.5) {
       // compute exactly if it's been samples more than N times and
       // hasn't been computed exactly already

@@ -10,11 +10,10 @@
 
 #include "pam.hpp"
 
-#include <armadillo>
 #include <unordered_map>
 
 namespace km {
-void PAM::fitPAM(const arma::fmat& inputData) {
+void PAM::fitPAM(const arma_mat& inputData) {
   data = arma::trans(inputData);
   arma::urowvec medoidIndices(nMedoids);
   PAM::buildPAM(data, &medoidIndices);
@@ -36,19 +35,19 @@ void PAM::fitPAM(const arma::fmat& inputData) {
 }
 
 void PAM::buildPAM(
-  const arma::fmat& data,
+  const arma_mat& data,
   arma::urowvec* medoidIndices) {
   size_t N = data.n_cols;
-  arma::frowvec estimates(N, arma::fill::zeros);
-  arma::frowvec bestDistances(N);
-  bestDistances.fill(std::numeric_limits<float>::infinity());
+  arma_rowvec estimates(N, arma::fill::zeros);
+  arma_rowvec bestDistances(N);
+  bestDistances.fill(std::numeric_limits<bpam_float>::infinity());
   for (size_t k = 0; k < nMedoids; k++) {
-    float minDistance = std::numeric_limits<float>::infinity();
+    bpam_float minDistance = std::numeric_limits<bpam_float>::infinity();
     size_t best = 0;
     for (size_t i = 0; i < data.n_cols; i++) {
-      float total = 0;
+      bpam_float total = 0;
       for (size_t j = 0; j < data.n_cols; j++) {
-        float cost = (this->*lossFn)(data, i, j);
+        bpam_float cost = (this->*lossFn)(data, i, j);
         // compares this with the cached best distance
         if (bestDistances(j) < cost) {
           cost = bestDistances(j);
@@ -64,7 +63,7 @@ void PAM::buildPAM(
 
     // update the medoid assignment and best_distance for this datapoint
     for (size_t l = 0; l < N; l++) {
-      float cost = (this->*lossFn)(data, l, (*medoidIndices)(k));
+      bpam_float cost = (this->*lossFn)(data, l, (*medoidIndices)(k));
       if (cost < bestDistances(l)) {
         bestDistances(l) = cost;
       }
@@ -73,15 +72,15 @@ void PAM::buildPAM(
 }
 
 void PAM::swapPAM(
-  const arma::fmat& data,
+  const arma_mat& data,
   arma::urowvec* medoidIndices,
   arma::urowvec* assignments) {
-  float minDistance = std::numeric_limits<float>::infinity();
+  bpam_float minDistance = std::numeric_limits<bpam_float>::infinity();
   size_t best = 0;
   size_t medoidToSwap = 0;
   size_t N = data.n_cols;
-  arma::frowvec bestDistances(N);
-  arma::frowvec secondBestDistances(N);
+  arma_rowvec bestDistances(N);
+  arma_rowvec secondBestDistances(N);
 
   KMedoids::calcBestDistancesSwap(
     data,
@@ -92,10 +91,10 @@ void PAM::swapPAM(
 
   for (size_t k = 0; k < nMedoids; k++) {
     for (size_t i = 0; i < data.n_cols; i++) {
-      float total = 0;
+      bpam_float total = 0;
       for (size_t j = 0; j < data.n_cols; j++) {
         // compute distance between base point and every other datapoint
-        float cost = (this->*lossFn)(data, i, j);
+        bpam_float cost = (this->*lossFn)(data, i, j);
         // if x_j is NOT assigned to k: compares this with
         //   the cached best distance
         // if x_j is assigned to k: compares this with
